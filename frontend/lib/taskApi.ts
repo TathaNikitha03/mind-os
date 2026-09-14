@@ -186,3 +186,4 @@ export async function deleteTaskApi(id: string | number): Promise<void> {
     throw new Error(errorData.error || `Failed to delete task (HTTP ${res.status})`);
   }
 }
+// Dummy change 2 for GitHub Desktop test!

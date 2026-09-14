@@ -365,7 +365,8 @@ CREATE TABLE IF NOT EXISTS document_entities (
 
 -- ============================================================
 -- 12. DOCUMENT CHUNKS
--- Sequential overlapping text chunks for retrieval and RAG
+-- End of schema definition. Added a new line to test GitHub Desktop tracking!
+-- Dummy change 1 for GitHub Desktop test!eval and RAG
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS document_chunks (
