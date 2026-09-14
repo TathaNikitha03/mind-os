@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — MIND OS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="dashboard-page">
+  <header class="navbar">
+    <div class="container nav-inner">
+      <a href="dashboard.html" class="logo">
+        <span class="logo-mark">M</span>
+        MIND OS
+      </a>
+      <div class="nav-actions">
+        <span id="user-greeting" class="user-greeting"></span>
+        <button id="logout-btn" class="btn btn-ghost">Log out</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="dashboard-shell">
+    <aside class="dashboard-sidebar">
+      <nav class="sidebar-nav">
+        <button class="sidebar-link active" data-panel="dashboard">
+          <svg class="sidebar-icon-svg" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+          Dashboard
+        </button>
+        <button class="sidebar-link" data-panel="tasks">
+          <svg class="sidebar-icon-svg" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Tasks
+        </button>
+        <button class="sidebar-link" data-panel="documents">
+          <svg class="sidebar-icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Documents
+        </button>
+        <button class="sidebar-link" data-panel="calendar">
+          <svg class="sidebar-icon-svg" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Calendar
+        </button>
+        <button class="sidebar-link" data-panel="assistant">
+          <svg class="sidebar-icon-svg" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/><circle cx="12" cy="12" r="3"/></svg>
+          Assistant
+        </button>
+        <button class="sidebar-link" data-panel="profile">
+          <svg class="sidebar-icon-svg" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Profile
+        </button>
+      </nav>
+    </aside>
+
+    <section class="dashboard-content">
+      <!-- Dashboard Panel -->
+      <div id="panel-dashboard" class="content-panel active">
+        <div class="content-greeting">
+          <h1 id="time-greeting">Good Morning</h1>
+          <p id="greeting-subtitle">Here's what's on your schedule today.</p>
+        </div>
+
+        <div class="content-section">
+          <h2>Today's Priority Tasks</h2>
+          <div class="task-cards">
+            <article class="task-card">
+              <div class="task-card-header">
+                <span class="task-priority high">High Priority</span>
+              </div>
+              <h3>Complete project proposal</h3>
+              <p>Due today · 2 hours remaining</p>
+            </article>
+            <article class="task-card">
+              <div class="task-card-header">
+                <span class="task-priority medium">Medium Priority</span>
+              </div>
+              <h3>Review study notes</h3>
+              <p>Due today · Before 5:00 PM</p>
+            </article>
+            <article class="task-card">
+              <div class="task-card-header">
+                <span class="task-priority low">Low Priority</span>
+              </div>
+              <h3>Organize workspace</h3>
+              <p>Flexible · Anytime today</p>
+            </article>
+          </div>
+        </div>
+
+        <div class="content-section">
+          <h2>Upcoming Deadlines</h2>
+          <div class="deadline-list">
+            <div class="deadline-item">
+              <div class="deadline-info">
+                <h4>Math assignment submission</h4>
+                <span>Coursework · Priority high</span>
+              </div>
+              <span class="deadline-date">Aug 10</span>
+            </div>
+            <div class="deadline-item">
+              <div class="deadline-info">
+                <h4>Team presentation prep</h4>
+                <span>Group project · 3 members</span>
+              </div>
+              <span class="deadline-date">Aug 12</span>
+            </div>
+            <div class="deadline-item">
+              <div class="deadline-info">
+                <h4>Monthly goal review</h4>
+                <span>Personal · Mind OS check-in</span>
+              </div>
+              <span class="deadline-date">Aug 15</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="content-section">
+          <h2>Schedule Recommendations</h2>
+          <div class="insight-card">
+            <span class="insight-label">MindFlow AI Assistant</span>
+            <p id="ai-insight">
+              You are most productive between 9:00 AM – 11:00 AM. Consider scheduling your high-priority
+              tasks during this window. You have 2 deadlines this week — start with the
+              project proposal today to stay ahead.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tasks Panel -->
+      <div id="panel-tasks" class="content-panel">
+        <div class="content-greeting">
+          <h1>Task Management</h1>
+          <p>Manage and track all your scheduled tasks in one place.</p>
+        </div>
+        <div class="task-cards">
+          <article class="task-card">
+            <div class="task-card-header">
+              <span class="task-priority high">High Priority</span>
+            </div>
+            <h3>Complete project proposal</h3>
+            <p>Due today · 2 hours remaining</p>
+          </article>
+          <article class="task-card">
+            <div class="task-card-header">
+              <span class="task-priority medium">Medium Priority</span>
+            </div>
+            <h3>Review study notes</h3>
+            <p>Due today · Before 5:00 PM</p>
+          </article>
+          <article class="task-card">
+            <div class="task-card-header">
+              <span class="task-priority low">Low Priority</span>
+            </div>
+            <h3>Organize workspace</h3>
+            <p>Flexible · Anytime today</p>
+          </article>
+          <article class="task-card">
+            <div class="task-card-header">
+              <span class="task-priority medium">Medium Priority</span>
+            </div>
+            <h3>Read chapter 4</h3>
+            <p>Due Aug 10 · 45 minutes</p>
+          </article>
+        </div>
+      </div>
+
+      <!-- Documents Panel -->
+      <div id="panel-documents" class="content-panel">
+        <div class="panel-placeholder">
+          <div class="panel-placeholder-icon">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <h2>Documents &amp; Notes</h2>
+          <p>Store and access your study materials and personal notes here.</p>
+        </div>
+      </div>
+
+      <!-- Calendar Panel -->
+      <div id="panel-calendar" class="content-panel">
+        <div class="panel-placeholder">
+          <div class="panel-placeholder-icon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <h2>Schedule Calendar</h2>
+          <p>View deadlines and events in a unified calendar layout.</p>
+        </div>
+      </div>
+
+      <!-- Assistant Panel -->
+      <div id="panel-assistant" class="content-panel">
+        <div class="content-greeting">
+          <h1>Productivity Assistant</h1>
+          <p>Your AI-powered schedule &amp; focus companion.</p>
+        </div>
+        <div class="insight-card">
+          <span class="insight-label">MindFlow Assistant</span>
+          <p>
+            Welcome! I can help you prioritize tasks, plan your schedule, and maintain consistent focus blocks throughout your day.
+          </p>
+        </div>
+      </div>
+
+      <!-- Profile Panel -->
+      <div id="panel-profile" class="content-panel">
+        <div class="content-greeting">
+          <h1>Profile Settings</h1>
+          <p>Your account details and preferences.</p>
+        </div>
+        <div class="profile-card">
+          <div id="profile-avatar" class="profile-avatar">U</div>
+          <h2 id="profile-name">User Account</h2>
+          <p id="profile-mobile" class="profile-mobile">—</p>
+          <div class="profile-detail">
+            <span>Account status</span>
+            <span>Active</span>
+          </div>
+          <div class="profile-detail">
+            <span>Member since</span>
+            <span id="profile-since">—</span>
+          </div>
+          <div class="profile-detail">
+            <span>Mobile</span>
+            <span id="profile-mobile-detail">—</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="js/auth.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>

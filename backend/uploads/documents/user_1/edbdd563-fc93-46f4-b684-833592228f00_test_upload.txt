@@ -1,0 +1,1 @@
+This is a dummy document for RAG testing. The sky is blue and grass is green. Normalization is the process of structuring a relational database in accordance with a series of so-called normal forms.
