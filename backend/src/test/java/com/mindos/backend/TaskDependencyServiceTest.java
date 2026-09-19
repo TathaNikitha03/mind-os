@@ -8,7 +8,6 @@ import com.mindos.backend.enums.TaskPriority;
 import com.mindos.backend.enums.TaskStatus;
 import com.mindos.backend.repository.TaskDependencyRepository;
 import com.mindos.backend.repository.TaskRepository;
-import com.mindos.backend.repository.UserRepository;
 import com.mindos.backend.service.TaskDependencyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

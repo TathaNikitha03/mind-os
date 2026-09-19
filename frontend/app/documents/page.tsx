@@ -28,6 +28,8 @@ import {
   type SemanticSearchResultDto,
   type RagAnswerResponseDto
 } from '@/lib/knowledgeApi';
+import { getTasksForDocumentApi } from '@/lib/taskDocumentApi';
+import { type TaskDto } from '@/lib/taskApi';
 
 type FileTypeFilter = 'ALL' | 'PDF' | 'DOCX' | 'TXT';
 type SortFilter = 'RECENT' | 'OLDEST' | 'NAME' | 'SIZE';
@@ -56,6 +58,8 @@ export default function DocumentsPage() {
   const [isExtractingText, setIsExtractingText] = useState(false);
   const [deletingDoc, setDeletingDoc] = useState<DocumentDto | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [linkedTasks, setLinkedTasks] = useState<TaskDto[]>([]);
+  const [isLoadingLinkedTasks, setIsLoadingLinkedTasks] = useState(false);
 
   // Semantic Search & RAG Modal State (STEP 4.7 & 4.8)
   const [knowledgeMode, setKnowledgeMode] = useState<'RAG' | 'SEARCH'>('RAG');
@@ -300,18 +304,23 @@ export default function DocumentsPage() {
     setSelectedDocForDetails(doc);
     setSelectedDocContent(null);
     setIsLoadingContent(true);
+    setLinkedTasks([]);
+    setIsLoadingLinkedTasks(true);
 
     try {
-      const [freshDoc, freshContent] = await Promise.all([
+      const [freshDoc, freshContent, tasks] = await Promise.all([
         getDocumentByIdApi(doc.id).catch(() => doc),
-        getDocumentContentApi(doc.id).catch(() => null)
+        getDocumentContentApi(doc.id).catch(() => null),
+        getTasksForDocumentApi(doc.id).catch(() => [])
       ]);
       setSelectedDocForDetails(freshDoc);
       setSelectedDocContent(freshContent);
+      setLinkedTasks(tasks || []);
     } catch (err: any) {
       console.warn('Could not fetch fresh details/content:', err);
     } finally {
       setIsLoadingContent(false);
+      setIsLoadingLinkedTasks(false);
     }
   }
 
@@ -1013,6 +1022,57 @@ export default function DocumentsPage() {
                   </button>
                 </div>
               )}
+
+              {/* Connected Tasks in Calendar / Dashboard */}
+              <div style={{ marginTop: 12, padding: '12px 14px', background: '#fdfbf7', border: '1px solid #f1ece1', borderRadius: 'var(--radius-md)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <CheckSquare size={15} color="var(--accent-purple)" />
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                      Connected Tasks & Deadlines ({linkedTasks.length})
+                    </span>
+                  </div>
+                  <Link href="/dashboard" style={{ fontSize: '0.78rem', color: 'var(--accent-purple)', fontWeight: 600, textDecoration: 'none' }}>
+                    Open Calendar →
+                  </Link>
+                </div>
+                {isLoadingLinkedTasks ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    <Loader2 size={13} className="animate-spin" /> Loading linked tasks...
+                  </div>
+                ) : linkedTasks.length === 0 ? (
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    Not linked to any tasks yet. Attach to tasks in the Calendar or Task Manager to connect study materials.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {linkedTasks.map(t => (
+                      <div key={t.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: '#fff', borderRadius: 6, border: '1px solid var(--border-color)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                          <span style={{ fontSize: '0.83rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {t.title}
+                          </span>
+                          {t.dueDate && (
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                              Due {t.dueDate}
+                            </span>
+                          )}
+                        </div>
+                        <span style={{
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          background: t.status === 'COMPLETED' ? '#ecfdf5' : '#f5f3ff',
+                          color: t.status === 'COMPLETED' ? '#059669' : '#7c3aed'
+                        }}>
+                          {t.status === 'COMPLETED' ? 'Done' : t.priority + ' Priority'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="modal-footer" style={{ justifyContent: 'space-between' }}>

@@ -18,6 +18,8 @@ function LoginForm() {
   const [showLoginPw, setShowLoginPw] = useState(false);
   const [loginError, setLoginError] = useState('');
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // Register form state
   const [regName, setRegName] = useState('');
   const [regMobile, setRegMobile] = useState('');
@@ -32,28 +34,42 @@ function LoginForm() {
     if (searchParams.get('mode') === 'register') setActiveTab('register');
   }, [router, searchParams]);
 
-  function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoginError('');
-    const result = login(loginMobile, loginPassword);
-    if (result.success) {
-      router.replace('/dashboard');
-    } else {
-      setLoginError(result.message || 'Login failed.');
+    setIsSubmitting(true);
+    try {
+      const result = await login(loginMobile, loginPassword);
+      if (result.success) {
+        router.replace('/dashboard');
+      } else {
+        setLoginError(result.message || 'Login failed. Please check your credentials.');
+      }
+    } catch (err: any) {
+      setLoginError(err.message || 'An error occurred during login.');
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
-  function handleRegister(e: React.FormEvent) {
+  async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     setRegError(''); setRegSuccess('');
     if (regPassword !== regConfirm) { setRegError('Passwords do not match.'); return; }
-    const result = register(regName, regMobile, regPassword);
-    if (result.success) {
-      setRegSuccess(result.message);
-      setRegName(''); setRegMobile(''); setRegPassword(''); setRegConfirm('');
-      setTimeout(() => { setActiveTab('login'); setRegSuccess(''); }, 1500);
-    } else {
-      setRegError(result.message);
+    setIsSubmitting(true);
+    try {
+      const result = await register(regName, regMobile, regPassword);
+      if (result.success) {
+        setRegSuccess(result.message);
+        setRegName(''); setRegMobile(''); setRegPassword(''); setRegConfirm('');
+        setTimeout(() => { setActiveTab('login'); setRegSuccess(''); }, 1500);
+      } else {
+        setRegError(result.message || 'Registration failed.');
+      }
+    } catch (err: any) {
+      setRegError(err.message || 'An error occurred during registration.');
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -152,7 +168,9 @@ function LoginForm() {
                 </div>
 
                 {loginError && <div className="form-error">{loginError}</div>}
-                <button type="submit" className="btn btn-primary btn-full">Log in to MIND OS</button>
+                <button type="submit" className="btn btn-primary btn-full" disabled={isSubmitting}>
+                  {isSubmitting ? 'Logging in...' : 'Log in to MIND OS'}
+                </button>
 
                 <p className="auth-switch">
                   Don&apos;t have an account?{' '}
@@ -200,7 +218,9 @@ function LoginForm() {
 
                 {regError && <div className="form-error">{regError}</div>}
                 {regSuccess && <div className="form-success">{regSuccess}</div>}
-                <button type="submit" className="btn btn-primary btn-full">Create Free Account</button>
+                <button type="submit" className="btn btn-primary btn-full" disabled={isSubmitting}>
+                  {isSubmitting ? 'Creating account...' : 'Create Free Account'}
+                </button>
 
                 <p className="auth-switch">
                   Already have an account?{' '}

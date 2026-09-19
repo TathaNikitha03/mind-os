@@ -1,6 +1,5 @@
 package com.mindos.backend;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindos.backend.controller.TaskController;
 import com.mindos.backend.dto.TaskResponse;
 import com.mindos.backend.dto.TaskStatisticsResponse;
@@ -34,8 +33,6 @@ public class TaskStatisticsControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @MockBean
     private TaskService taskService;

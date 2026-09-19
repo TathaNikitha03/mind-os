@@ -21,6 +21,7 @@ public class TaskResponse {
     private int dependencyCount;
     private int uncompletedDependencyCount;
     private boolean blocked;
+    private int documentCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime completedAt;
@@ -44,6 +45,7 @@ public class TaskResponse {
         private int dependencyCount;
         private int uncompletedDependencyCount;
         private boolean blocked;
+        private int documentCount;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
         private LocalDateTime completedAt;
@@ -62,6 +64,7 @@ public class TaskResponse {
         public TaskResponseBuilder dependencyCount(int dependencyCount) { this.dependencyCount = dependencyCount; return this; }
         public TaskResponseBuilder uncompletedDependencyCount(int uncompletedDependencyCount) { this.uncompletedDependencyCount = uncompletedDependencyCount; return this; }
         public TaskResponseBuilder blocked(boolean blocked) { this.blocked = blocked; return this; }
+        public TaskResponseBuilder documentCount(int documentCount) { this.documentCount = documentCount; return this; }
         public TaskResponseBuilder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
         public TaskResponseBuilder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
         public TaskResponseBuilder completedAt(LocalDateTime completedAt) { this.completedAt = completedAt; return this; }
@@ -82,6 +85,7 @@ public class TaskResponse {
             r.setDependencyCount(dependencyCount);
             r.setUncompletedDependencyCount(uncompletedDependencyCount);
             r.setBlocked(blocked);
+            r.setDocumentCount(documentCount);
             r.setCreatedAt(createdAt);
             r.setUpdatedAt(updatedAt);
             r.setCompletedAt(completedAt);
@@ -117,6 +121,8 @@ public class TaskResponse {
     public void setUncompletedDependencyCount(int uncompletedDependencyCount) { this.uncompletedDependencyCount = uncompletedDependencyCount; }
     public boolean isBlocked() { return blocked; }
     public void setBlocked(boolean blocked) { this.blocked = blocked; }
+    public int getDocumentCount() { return documentCount; }
+    public void setDocumentCount(int documentCount) { this.documentCount = documentCount; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -19,10 +18,15 @@ import java.util.UUID;
 @Service("s3CompatibleStorageService")
 public class S3CompatibleStorageService implements StorageService {
 
+    @SuppressWarnings("unused")
     private final String bucketName;
+    @SuppressWarnings("unused")
     private final String endpoint;
+    @SuppressWarnings("unused")
     private final String accessKey;
+    @SuppressWarnings("unused")
     private final String secretKey;
+    @SuppressWarnings("unused")
     private final String region;
 
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("pdf", "docx", "doc", "txt");

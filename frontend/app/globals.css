@@ -591,6 +591,7 @@ h1,h2,h3,h4 { font-family: 'Outfit','Plus Jakarta Sans',sans-serif; color: var(-
   margin-bottom: 14px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -1411,6 +1412,7 @@ h1,h2,h3,h4 { font-family: 'Outfit','Plus Jakarta Sans',sans-serif; color: var(-
   margin-bottom: 16px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -2432,4 +2434,360 @@ h1,h2,h3,h4 { font-family: 'Outfit','Plus Jakarta Sans',sans-serif; color: var(-
   color: var(--text-muted);
 }
 
-/* Dummy change 4 for GitHub Desktop test! */
+/* ==========================================================================
+   FEATURE #2: DIRECT CONNECTION TO DOCUMENT KNOWLEDGE BASE & TASK RAG
+   ========================================================================== */
+
+/* Calendar Agenda Document Badge */
+.calendar-agenda-doc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  background: rgba(139, 92, 246, 0.1);
+  color: #7c3aed;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+/* Task Connected Documents Section */
+.task-doc-section {
+  margin-top: 16px;
+  padding: 16px;
+  background: #fdfbf7;
+  border: 1px solid #f1ece1;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.task-doc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.task-doc-header h4 {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.task-doc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-doc-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #e9e5df;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.task-doc-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.task-doc-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.task-doc-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(139, 92, 246, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.task-doc-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.task-doc-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.task-doc-name {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+
+.task-doc-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.task-doc-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.73rem;
+  color: var(--text-secondary);
+}
+
+.task-doc-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-xs {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Document Content Preview Box */
+.task-doc-preview-box {
+  background: #fafaf9;
+  border: 1px solid #e7e5e4;
+  border-radius: 8px;
+  padding: 10px 12px;
+  max-height: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-doc-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e7e5e4;
+  padding-bottom: 6px;
+}
+
+.task-doc-preview-content {
+  overflow-y: auto;
+  max-height: 170px;
+  padding-right: 4px;
+}
+
+/* Grounded Task AI Assistant (RAG) Section */
+.task-ai-section {
+  margin-top: 14px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(245, 243, 255, 0.7) 0%, rgba(253, 244, 255, 0.7) 100%);
+  border: 1px solid rgba(192, 132, 252, 0.3);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.task-ai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.task-ai-header h4 {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #5b21b6;
+  margin: 0;
+}
+
+.task-ai-input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.task-ai-input-group input {
+  flex: 1;
+  background: #ffffff;
+}
+
+.task-ai-answer-card {
+  background: #ffffff;
+  border: 1px solid #e9d5ff;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.06);
+}
+
+.task-ai-answer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #f3e8ff;
+  padding-bottom: 6px;
+}
+
+.task-ai-answer-body {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+
+.task-ai-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed #e9d5ff;
+}
+
+.task-ai-source-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.task-ai-source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  color: #6d28d9;
+  cursor: help;
+}
+
+/* ==========================================================================
+   FEATURE #3: DASHBOARD AI PRODUCTIVITY ASSISTANT & COPILOT
+   ========================================================================== */
+
+.ai-copilot-banner {
+  background: linear-gradient(135deg, #faf5ff 0%, #f5f3ff 50%, #fdf4ff 100%);
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  border-radius: 14px;
+  padding: 20px 24px;
+  margin-bottom: 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  box-shadow: 0 4px 18px rgba(139, 92, 246, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-copilot-banner::before {
+  content: '';
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle, rgba(167, 139, 250, 0.2) 0%, rgba(255, 255, 255, 0) 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.ai-copilot-banner-content {
+  flex: 1;
+  min-width: 280px;
+}
+
+.ai-copilot-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(139, 92, 246, 0.12);
+  color: #7c3aed;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  margin-bottom: 6px;
+}
+
+.ai-copilot-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #4c1d95;
+  margin: 4px 0 6px 0;
+  letter-spacing: -0.2px;
+}
+
+.ai-copilot-subtitle {
+  font-size: 0.84rem;
+  color: #6b21a8;
+  margin: 0 0 12px 0;
+  max-width: 600px;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+.ai-copilot-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-copilot-chip {
+  background: #ffffff;
+  border: 1px solid #ddd6fe;
+  color: #6d28d9;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ai-copilot-chip:hover {
+  background: #7c3aed;
+  color: #ffffff;
+  border-color: #7c3aed;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.2);
+}
+
+.ai-copilot-banner-action {
+  flex-shrink: 0;
+}

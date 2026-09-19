@@ -45,6 +45,7 @@ public class SemanticSearchServiceTest {
 
     private DocumentChunkEmbedding embNormalization;
     private DocumentChunkEmbedding embIndexing;
+    @SuppressWarnings("unused")
     private DocumentChunkEmbedding embInheritance;
 
     @BeforeEach

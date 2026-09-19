@@ -17,6 +17,7 @@ export interface TaskDto {
   dependencyCount?: number;
   uncompletedDependencyCount?: number;
   blocked?: boolean;
+  documentCount?: number;
   createdAt?: string;
   updatedAt?: string;
   completedAt?: string;
@@ -200,9 +201,17 @@ export async function deleteTaskApi(id: string | number): Promise<void> {
 // Dummy change 2 for GitHub Desktop test!
 
 // AI TASK ASSISTANT
+export interface TaskSuggestionItem {
+  title: string;
+  description?: string;
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+  estimatedMinutes?: number;
+  suggestedCategory?: string;
+}
+
 export interface AiTaskSuggestionResponse {
   analysisSummary: string;
-  suggestedTasks: TaskInput[];
+  suggestedTasks: TaskSuggestionItem[];
 }
 
 export async function analyzeTaskWithAi(prompt: string): Promise<AiTaskSuggestionResponse> {

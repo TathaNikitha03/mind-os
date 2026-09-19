@@ -13,7 +13,6 @@ import com.mindos.backend.repository.CategoryRepository;
 import com.mindos.backend.repository.TagRepository;
 import com.mindos.backend.repository.TaskDependencyRepository;
 import com.mindos.backend.repository.TaskRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,13 +27,37 @@ import java.util.Map;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class TaskService {
 
     private final TaskRepository taskRepository;
     private final CategoryRepository categoryRepository;
     private final TagRepository tagRepository;
     private final TaskDependencyRepository taskDependencyRepository;
+    private final com.mindos.backend.repository.TaskDocumentRepository taskDocumentRepository;
+
+    public TaskService(
+            TaskRepository taskRepository,
+            CategoryRepository categoryRepository,
+            TagRepository tagRepository,
+            TaskDependencyRepository taskDependencyRepository
+    ) {
+        this(taskRepository, categoryRepository, tagRepository, taskDependencyRepository, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public TaskService(
+            TaskRepository taskRepository,
+            CategoryRepository categoryRepository,
+            TagRepository tagRepository,
+            TaskDependencyRepository taskDependencyRepository,
+            com.mindos.backend.repository.TaskDocumentRepository taskDocumentRepository
+    ) {
+        this.taskRepository = taskRepository;
+        this.categoryRepository = categoryRepository;
+        this.tagRepository = tagRepository;
+        this.taskDependencyRepository = taskDependencyRepository;
+        this.taskDocumentRepository = taskDocumentRepository;
+    }
 
 
 
@@ -348,12 +371,17 @@ public class TaskService {
         int dependencyCount = 0;
         int uncompletedCount = 0;
         boolean isBlocked = false;
+        int documentCount = 0;
 
         if (taskDependencyRepository != null && task.getId() != null) {
             List<com.mindos.backend.entity.TaskDependency> deps = taskDependencyRepository.findByTaskId(task.getId());
             dependencyCount = deps.size();
             uncompletedCount = (int) deps.stream().filter(d -> d.getDependsOnTask().getStatus() != TaskStatus.COMPLETED).count();
             isBlocked = uncompletedCount > 0 && task.getStatus() != TaskStatus.COMPLETED;
+        }
+
+        if (taskDocumentRepository != null && task.getId() != null) {
+            documentCount = (int) taskDocumentRepository.countByTaskId(task.getId());
         }
 
         return TaskResponse.builder()
@@ -371,6 +399,7 @@ public class TaskService {
                 .dependencyCount(dependencyCount)
                 .uncompletedDependencyCount(uncompletedCount)
                 .blocked(isBlocked)
+                .documentCount(documentCount)
                 .createdAt(task.getCreatedAt())
                 .updatedAt(task.getUpdatedAt())
                 .completedAt(task.getCompletedAt())

@@ -17,6 +17,8 @@ interface StoredUser {
   createdAt: string;
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8081';
+
 const USERS_KEY = 'mind_os_users';
 const SESSION_KEY = 'mind_os_session';
 
@@ -37,7 +39,7 @@ function normalizeMobile(mobile: string) {
   return mobile.replace(/\D/g, '');
 }
 
-export function register(name: string, mobile: string, password: string): { success: boolean; message: string } {
+export async function register(name: string, mobile: string, password: string): Promise<{ success: boolean; message: string }> {
   const trimmedName = name.trim();
   const nm = normalizeMobile(mobile);
 
@@ -48,6 +50,31 @@ export function register(name: string, mobile: string, password: string): { succ
   if (password.length < 6)
     return { success: false, message: 'Password must be at least 6 characters.' };
 
+  // 1. Register with Spring Boot backend (PostgreSQL database)
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: trimmedName, mobile: nm, password }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+      // Also cache in browser for fast offline access
+      const users = getUsers();
+      if (!users.find(u => u.mobile === nm)) {
+        users.push({ name: trimmedName, mobile: nm, password, createdAt: new Date().toISOString() });
+        saveUsers(users);
+      }
+      return { success: true, message: data.message || 'Account created successfully! You can now log in.' };
+    } else if (!res.ok) {
+      return { success: false, message: data.message || 'Registration failed. Please check your details.' };
+    }
+  } catch (err) {
+    console.warn('Backend registration unavailable, falling back to local cache:', err);
+  }
+
+  // Fallback to local storage
   const users = getUsers();
   if (users.find(u => u.mobile === nm))
     return { success: false, message: 'This mobile number is already registered. Please log in.' };
@@ -57,8 +84,42 @@ export function register(name: string, mobile: string, password: string): { succ
   return { success: true, message: 'Account created successfully! You can now log in.' };
 }
 
-export function login(mobile: string, password: string): { success: boolean; message?: string; user?: User } {
+export async function login(mobile: string, password: string): Promise<{ success: boolean; message?: string; user?: User }> {
   const nm = normalizeMobile(mobile);
+
+  // 1. Authenticate against Spring Boot backend (PostgreSQL database)
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mobile: nm, password }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+      const session: User = {
+        name: data.name || 'User',
+        mobile: data.mobile || nm,
+        loggedInAt: new Date().toISOString(),
+      };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+
+      // Cache user details locally
+      const users = getUsers();
+      if (!users.find(u => u.mobile === nm)) {
+        users.push({ name: session.name, mobile: nm, password, createdAt: new Date().toISOString() });
+        saveUsers(users);
+      }
+
+      return { success: true, user: session };
+    } else if (res.status === 400 || res.status === 401) {
+      return { success: false, message: data.message || 'Invalid mobile number or password.' };
+    }
+  } catch (err) {
+    console.warn('Backend login unavailable, attempting local cache fallback:', err);
+  }
+
+  // Fallback to local storage
   const users = getUsers();
   const user = users.find(u => u.mobile === nm && u.password === password);
   if (!user) return { success: false, message: 'Invalid mobile number or password.' };

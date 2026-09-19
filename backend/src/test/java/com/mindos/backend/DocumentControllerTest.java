@@ -1,10 +1,8 @@
 package com.mindos.backend;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mindos.backend.controller.DocumentController;
 import com.mindos.backend.dto.DocumentChunkResponse;
 import com.mindos.backend.dto.DocumentContentResponse;
-import com.mindos.backend.dto.DocumentRequest;
 import com.mindos.backend.dto.DocumentResponse;
 import com.mindos.backend.entity.User;
 import com.mindos.backend.service.DocumentService;
@@ -37,9 +35,6 @@ public class DocumentControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @MockBean
     private DocumentService documentService;

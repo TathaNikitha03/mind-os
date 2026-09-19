@@ -9,9 +9,9 @@ public class QueryDb {
             Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/mindflow_db", "postgres", "Nikitha@03");
             Statement stmt = conn.createStatement();
             
-            ResultSet rs = stmt.executeQuery("SELECT id, name, email, created_at FROM users ORDER BY id DESC LIMIT 20");
-            while (rs.next()) {
-                System.out.println("User ID: " + rs.getInt("id") + " | Name: " + rs.getString("name") + " | Email/Mobile: " + rs.getString("email") + " | Created: " + rs.getTimestamp("created_at"));
+            ResultSet rs = stmt.executeQuery("SELECT id, name, email, password_hash FROM users WHERE id = 4");
+            if (rs.next()) {
+                System.out.println("User 4: " + rs.getString("email") + " | pw: " + rs.getString("password_hash"));
             }
             conn.close();
         } catch (Exception e) {

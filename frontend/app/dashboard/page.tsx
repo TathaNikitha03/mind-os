@@ -8,7 +8,7 @@ import {
   LogOut, Plus, Search, Filter, CheckCircle2, Circle, Edit3, Trash2,
   Clock, Tag as TagIcon, Folder, X, AlertCircle, Eye, ListTodo,
   CheckCheck, AlertTriangle, Sparkles, RefreshCw, Loader2, Link as LinkIcon,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Paperclip, Download, BookOpen, ExternalLink, HelpCircle
 } from 'lucide-react';
 import { getCurrentUser, logout, getMemberSince, type User as AuthUser } from '@/lib/auth';
 import {
@@ -19,6 +19,16 @@ import {
   getCategoriesApi, createCategoryApi, updateCategoryApi, deleteCategoryApi,
   type CategoryDto, type CategoryInput
 } from '@/lib/categoryApi';
+import {
+  getTaskDocumentsApi, attachDocumentToTaskApi, detachDocumentFromTaskApi
+} from '@/lib/taskDocumentApi';
+import {
+  getDocumentsApi, getDocumentContentApi, getDocumentDownloadUrl,
+  type DocumentDto, type DocumentContentDto
+} from '@/lib/documentApi';
+import {
+  askKnowledgeApi, type RagAnswerResponseDto, type RagSourceDto
+} from '@/lib/knowledgeApi';
 import AiTaskAssistantModal from '../components/AiTaskAssistantModal';
 
 function formatTimeAMPM(time24?: string) {
@@ -38,6 +48,13 @@ function formatDuration(minutes?: number): string {
   if (h > 0 && m > 0) return `${h}h ${m}m`;
   if (h > 0) return `${h}h`;
   return `${m}m`;
+}
+
+function formatFileSize(bytes?: number): string {
+  if (!bytes) return '0 B';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
 const HOURLY_TIME_OPTIONS = [
@@ -105,6 +122,7 @@ export interface TaskItem {
   dependencyCount?: number;
   uncompletedDependencyCount?: number;
   blocked?: boolean;
+  documentCount?: number;
   createdAt: string;
 }
 
@@ -197,6 +215,15 @@ export default function DashboardPage() {
 
   // AI Task Assistant State
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [aiModalInitialDate, setAiModalInitialDate] = useState<string>('2026-09-19');
+  const [aiModalInitialPrompt, setAiModalInitialPrompt] = useState<string>('');
+  const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null);
+
+  function openAiAssistant(initialDate?: string, prompt?: string) {
+    setAiModalInitialDate(initialDate || calendarSelectedDate || getTodayString());
+    setAiModalInitialPrompt(prompt || '');
+    setIsAiModalOpen(true);
+  }
 
   // Category Modal State
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
@@ -231,7 +258,25 @@ export default function DashboardPage() {
   const [isAddingDependency, setIsAddingDependency] = useState(false);
   const [selectedPrerequisiteId, setSelectedPrerequisiteId] = useState<string>('');
 
+  // Task Document & Knowledge Base State
+  const [allUserDocuments, setAllUserDocuments] = useState<DocumentDto[]>([]);
+  const [taskDocuments, setTaskDocuments] = useState<DocumentDto[]>([]);
+  const [isLoadingTaskDocuments, setIsLoadingTaskDocuments] = useState(false);
+  const [taskDocumentError, setTaskDocumentError] = useState<string | null>(null);
+  const [isAddingTaskDocument, setIsAddingTaskDocument] = useState(false);
+  const [selectedDocToAttachId, setSelectedDocToAttachId] = useState<string>('');
+  const [previewDocId, setPreviewDocId] = useState<number | string | null>(null);
+  const [previewDocContent, setPreviewDocContent] = useState<DocumentContentDto | null>(null);
+  const [isLoadingDocPreview, setIsLoadingDocPreview] = useState(false);
+
+  // Grounded Task AI Assistant (RAG)
+  const [taskAiQuestion, setTaskAiQuestion] = useState('');
+  const [isAskingTaskAi, setIsAskingTaskAi] = useState(false);
+  const [taskAiAnswer, setTaskAiAnswer] = useState<RagAnswerResponseDto | null>(null);
+  const [taskAiError, setTaskAiError] = useState<string | null>(null);
+
   // Form Field State
+  const [formAttachDocId, setFormAttachDocId] = useState<string>('');
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formPriority, setFormPriority] = useState<Priority>('MEDIUM');
@@ -371,6 +416,7 @@ export default function DashboardPage() {
     loadTaskStatisticsFromBackend();
     loadCategoriesFromBackend();
     loadTagsFromBackend();
+    loadUserDocuments();
   }, [router]);
 
   async function loadTaskStatisticsFromBackend() {
@@ -434,6 +480,7 @@ export default function DashboardPage() {
         dependencyCount: dto.dependencyCount || 0,
         uncompletedDependencyCount: dto.uncompletedDependencyCount || 0,
         blocked: dto.blocked || false,
+        documentCount: dto.documentCount || 0,
         createdAt: dto.createdAt ? dto.createdAt.split('T')[0] : getTodayString(),
       }));
       setTasks(mappedTasks);
@@ -442,6 +489,15 @@ export default function DashboardPage() {
       setTaskApiError(err?.message || 'Unable to load tasks. Please ensure the backend is running.');
     } finally {
       setIsLoadingTasks(false);
+    }
+  }
+
+  async function loadUserDocuments() {
+    try {
+      const docs = await getDocumentsApi();
+      setAllUserDocuments(docs);
+    } catch (err) {
+      console.warn('Could not load user documents:', err);
     }
   }
 
@@ -463,12 +519,38 @@ export default function DashboardPage() {
     }
   }
 
+  async function loadTaskDocuments(taskId: string) {
+    setIsLoadingTaskDocuments(true);
+    setTaskDocumentError(null);
+    try {
+      const docs = await getTaskDocumentsApi(taskId);
+      setTaskDocuments(docs);
+    } catch (err: any) {
+      console.error('Failed to load task documents:', err);
+      setTaskDocumentError('Unable to load attached documents.');
+    } finally {
+      setIsLoadingTaskDocuments(false);
+    }
+  }
+
   function openTaskDetails(task: TaskItem) {
     setDetailTask(task);
     setIsAddingDependency(false);
     setSelectedPrerequisiteId('');
     setDependencyError(null);
     loadTaskDependencies(task.id);
+
+    // Connected Knowledge & Document State
+    setIsAddingTaskDocument(false);
+    setSelectedDocToAttachId('');
+    setTaskDocumentError(null);
+    setPreviewDocId(null);
+    setPreviewDocContent(null);
+    setTaskAiAnswer(null);
+    setTaskAiError(null);
+    setTaskAiQuestion(`What are the key points and requirements for "${task.title}"?`);
+    loadTaskDocuments(task.id);
+    loadUserDocuments();
   }
 
   async function handleAddDependency(e: React.FormEvent) {
@@ -498,6 +580,74 @@ export default function DashboardPage() {
     } catch (err: any) {
       console.error('Failed to remove dependency:', err);
       setDependencyError(err.message || 'Unable to remove task dependency.');
+    }
+  }
+
+  async function handleAttachTaskDocument() {
+    if (!detailTask || !selectedDocToAttachId) return;
+    setTaskDocumentError(null);
+    try {
+      await attachDocumentToTaskApi(detailTask.id, selectedDocToAttachId);
+      await loadTaskDocuments(detailTask.id);
+      await loadTasksFromBackend();
+      setSelectedDocToAttachId('');
+      setIsAddingTaskDocument(false);
+    } catch (err: any) {
+      console.error('Failed to attach document:', err);
+      setTaskDocumentError(err.message || 'Unable to attach document.');
+    }
+  }
+
+  async function handleDetachTaskDocument(documentId: string | number) {
+    if (!detailTask) return;
+    setTaskDocumentError(null);
+    try {
+      await detachDocumentFromTaskApi(detailTask.id, documentId);
+      await loadTaskDocuments(detailTask.id);
+      await loadTasksFromBackend();
+      if (previewDocId === documentId) {
+        setPreviewDocId(null);
+        setPreviewDocContent(null);
+      }
+    } catch (err: any) {
+      console.error('Failed to detach document:', err);
+      setTaskDocumentError(err.message || 'Unable to detach document.');
+    }
+  }
+
+  async function handleToggleDocPreview(docId: string | number) {
+    if (previewDocId === docId) {
+      setPreviewDocId(null);
+      setPreviewDocContent(null);
+      return;
+    }
+
+    setPreviewDocId(docId);
+    setIsLoadingDocPreview(true);
+    try {
+      const content = await getDocumentContentApi(docId);
+      setPreviewDocContent(content);
+    } catch (err: any) {
+      console.error('Failed to load document content:', err);
+      setTaskDocumentError('Unable to preview document text.');
+    } finally {
+      setIsLoadingDocPreview(false);
+    }
+  }
+
+  async function handleAskTaskAi(customQuery?: string) {
+    const q = (customQuery || taskAiQuestion).trim();
+    if (!q) return;
+    setIsAskingTaskAi(true);
+    setTaskAiError(null);
+    try {
+      const answer = await askKnowledgeApi(q, 3);
+      setTaskAiAnswer(answer);
+    } catch (err: any) {
+      console.error('Task AI query failed:', err);
+      setTaskAiError(err.message || 'AI assistant is currently unavailable.');
+    } finally {
+      setIsAskingTaskAi(false);
     }
   }
 
@@ -695,20 +845,28 @@ export default function DashboardPage() {
   const doneTasks = tasks.filter(t => t.status === 'COMPLETED');
 
   // --- AI HANDLERS --- //
-  const handleTasksGenerated = async (suggestedTasks: TaskInput[]) => {
+  const handleTasksGenerated = async (suggestedTasks: any[], targetDate?: string, category?: string) => {
     setIsAiModalOpen(false);
     setActionError(null);
+    const dateToUse = targetDate || getTodayString();
+    const catToUse = category || 'Academics & Studies';
     try {
       for (const t of suggestedTasks) {
         await createTaskApi({
-          ...t,
-          dueDate: getTodayString(),
-          category: 'General',
+          title: t.title,
+          description: t.description || '',
+          priority: t.priority || 'MEDIUM',
+          dueDate: dateToUse,
+          category: t.suggestedCategory || catToUse,
+          estimatedMinutes: t.estimatedMinutes,
           tags: []
         });
       }
       await loadTasksFromBackend();
+      setAiSuccessMessage(`✨ Successfully scheduled ${suggestedTasks.length} task(s) for ${dateToUse === getTodayString() ? 'Today' : 'Tomorrow'} (${dateToUse})!`);
+      setTimeout(() => setAiSuccessMessage(null), 6000);
     } catch (err: any) {
+      console.error('Failed to add generated tasks:', err);
       setActionError(err.message || 'Failed to add generated tasks.');
     }
   };
@@ -795,8 +953,10 @@ export default function DashboardPage() {
     setFormTagsList([]);
     setTagInputValue('');
     setShowTagSuggestions(false);
+    setFormAttachDocId('');
     setFormErrors({});
     setActionError(null);
+    loadUserDocuments();
     setIsTaskModalOpen(true);
   }
 
@@ -815,8 +975,10 @@ export default function DashboardPage() {
     setFormTagsList(task.tags ? [...task.tags] : []);
     setTagInputValue('');
     setShowTagSuggestions(false);
+    setFormAttachDocId('');
     setFormErrors({});
     setActionError(null);
+    loadUserDocuments();
     setIsTaskModalOpen(true);
     setDetailTask(null);
   }
@@ -863,7 +1025,14 @@ export default function DashboardPage() {
         await updateTaskApi(editingTask.id, taskInput);
       } else {
         // POST /api/tasks
-        await createTaskApi(taskInput);
+        const created = await createTaskApi(taskInput);
+        if (formAttachDocId && created?.id) {
+          try {
+            await attachDocumentToTaskApi(created.id, formAttachDocId);
+          } catch (docErr) {
+            console.warn('Could not attach document on creation:', docErr);
+          }
+        }
       }
 
       await loadTasksFromBackend();
@@ -1034,6 +1203,79 @@ export default function DashboardPage() {
                     </div>
                   ) : (
                     <>
+                      {/* AI Success Toast Notification */}
+                      {aiSuccessMessage && (
+                        <div className="auth-error-banner fade-in" style={{
+                          background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)',
+                          borderColor: '#a7f3d0',
+                          color: '#065f46',
+                          marginBottom: 16,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          fontSize: '0.9rem',
+                          fontWeight: 600
+                        }}>
+                          <CheckCircle2 size={18} color="#059669" />
+                          <span>{aiSuccessMessage}</span>
+                        </div>
+                      )}
+
+                      {/* AI Productivity Copilot Hero Banner */}
+                      <div className="ai-copilot-banner fade-in">
+                        <div className="ai-copilot-banner-content">
+                          <div className="ai-copilot-badge">
+                            <Sparkles size={14} /> AI Productivity Copilot
+                          </div>
+                          <h3 className="ai-copilot-title">
+                            Accelerate Your Goals with Smart AI Scheduling
+                          </h3>
+                          <p className="ai-copilot-subtitle">
+                            Describe any goal, exam prep, or lab work. MindOS AI decomposes it into actionable, prioritized tasks directly synced with your PostgreSQL database.
+                          </p>
+                          <div className="ai-copilot-chips">
+                            <button
+                              type="button"
+                              className="ai-copilot-chip"
+                              onClick={() => openAiAssistant('2026-09-19', 'Break down my Java interview preparation for tomorrow')}
+                            >
+                              💼 Java Interview Prep
+                            </button>
+                            <button
+                              type="button"
+                              className="ai-copilot-chip"
+                              onClick={() => openAiAssistant('2026-09-20', 'Prepare Machine Learning Lab Report and evaluation metrics')}
+                            >
+                              🧪 ML Lab Report
+                            </button>
+                            <button
+                              type="button"
+                              className="ai-copilot-chip"
+                              onClick={() => openAiAssistant('2026-09-20', 'High-yield exam study plan with past papers and active recall')}
+                            >
+                              📚 Exam Study Sprint
+                            </button>
+                          </div>
+                        </div>
+                        <div className="ai-copilot-banner-action">
+                          <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={() => openAiAssistant()}
+                            style={{
+                              background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+                              boxShadow: '0 4px 14px rgba(124, 58, 237, 0.35)',
+                              padding: '10px 18px',
+                              fontSize: '0.9rem',
+                              fontWeight: 600,
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            <Bot size={16} /> Open AI Assistant
+                          </button>
+                        </div>
+                      </div>
+
                       {/* 1. Six Primary Stat Cards */}
                       <div className="task-stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', marginBottom: 20 }}>
                         <div className="stat-card">
@@ -1755,7 +1997,24 @@ export default function DashboardPage() {
                       </button>
                     </div>
 
-                    <div className="calendar-actions">
+                    <div className="calendar-actions" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        style={{
+                          background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                          color: 'white',
+                          border: 'none',
+                          padding: '8px 14px',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          boxShadow: '0 2px 8px rgba(139, 92, 246, 0.25)'
+                        }}
+                        onClick={() => openAiAssistant(calendarSelectedDate)}
+                        title="Plan tasks for this day with AI"
+                      >
+                        <Sparkles size={14} /> AI Plan Day
+                      </button>
                       <button
                         className="btn btn-primary btn-sm"
                         style={{ padding: '8px 16px', fontSize: '0.85rem' }}
@@ -1834,10 +2093,15 @@ export default function DashboardPage() {
                                   }}
                                 >
                                   {isCompleted ? <CheckCheck size={11} /> : <Circle size={10} />}
-                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
                                     {task.dueTime ? `${formatTimeAMPM(task.dueTime).split(' ')[0]} ` : ''}
                                     {task.title}
                                   </span>
+                                  {task.documentCount !== undefined && task.documentCount > 0 && (
+                                    <span title={`${task.documentCount} document(s) attached`} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                      <FileText size={11} style={{ flexShrink: 0, opacity: 0.95 }} />
+                                    </span>
+                                  )}
                                 </div>
                               );
                             })}
@@ -1865,16 +2129,31 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <div style={{ marginBottom: 14 }}>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
                     <button
-                      className="btn btn-soft btn-full"
-                      style={{ padding: '10px', fontSize: '0.84rem' }}
+                      className="btn btn-soft btn-sm"
+                      style={{ flex: 1, padding: '9px 8px', fontSize: '0.82rem' }}
                       onClick={() => {
                         openCreateModal();
                         setFormDueDate(calendarSelectedDate);
                       }}
                     >
-                      <Plus size={14} /> Add task for this day
+                      <Plus size={13} /> Add Task
+                    </button>
+                    <button
+                      className="btn btn-soft btn-sm"
+                      style={{
+                        flex: 1,
+                        padding: '9px 8px',
+                        fontSize: '0.82rem',
+                        color: '#7c3aed',
+                        background: '#f5f3ff',
+                        border: '1px solid #ddd6fe'
+                      }}
+                      onClick={() => openAiAssistant(calendarSelectedDate)}
+                      title="Plan this day with AI"
+                    >
+                      <Sparkles size={13} /> AI Plan Day
                     </button>
                   </div>
 
@@ -1909,7 +2188,7 @@ export default function DashboardPage() {
                               style={{ marginTop: 2, flexShrink: 0 }}
                               onClick={e => {
                                 e.stopPropagation();
-                                toggleCompleteTask(task);
+                                toggleCompleteTask(task.id, e);
                               }}
                               title={isCompleted ? 'Mark as todo' : 'Mark as completed'}
                             >
@@ -1931,6 +2210,12 @@ export default function DashboardPage() {
                                 {task.category && (
                                   <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
                                     {task.category}
+                                  </span>
+                                )}
+                                {task.documentCount !== undefined && task.documentCount > 0 && (
+                                  <span className="calendar-agenda-doc-badge" title={`${task.documentCount} document(s) attached from Knowledge Base`}>
+                                    <FileText size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 3 }} />
+                                    {task.documentCount} {task.documentCount === 1 ? 'Doc' : 'Docs'}
                                   </span>
                                 )}
                               </div>
@@ -2214,6 +2499,31 @@ export default function DashboardPage() {
                     Type a tag and press <strong>Enter</strong> or comma to add. Existing tags will be suggested.
                   </span>
                 </div>
+
+                {/* Link Document from Knowledge Base (Optional) */}
+                {!editingTask && (
+                  <div className="form-group" style={{ marginTop: 14 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}>
+                      <Paperclip size={13} color="var(--accent-purple)" /> Link Document from Knowledge Base (Optional)
+                    </label>
+                    <select
+                      className="form-input"
+                      value={formAttachDocId}
+                      onChange={e => setFormAttachDocId(e.target.value)}
+                      disabled={isSubmitting}
+                    >
+                      <option value="">-- No document attached --</option>
+                      {allUserDocuments.map(doc => (
+                        <option key={doc.id} value={doc.id}>
+                          {doc.title || doc.fileName} ({doc.fileType} • {(doc.fileSize / 1024).toFixed(1)} KB)
+                        </option>
+                      ))}
+                    </select>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+                      Connects lecture notes, project specifications, or PDFs directly to this calendar task.
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="modal-footer">
@@ -2421,6 +2731,260 @@ export default function DashboardPage() {
                   </div>
                 </div>
               )}
+
+              {/* Connected Knowledge & Documents Section */}
+              <div className="task-doc-section">
+                <div className="task-doc-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <BookOpen size={16} color="var(--accent-purple)" />
+                    <h4>Connected Knowledge & Documents ({taskDocuments.length})</h4>
+                  </div>
+                  {!isAddingTaskDocument && (
+                    <button
+                      type="button"
+                      className="btn btn-soft btn-xs"
+                      onClick={() => setIsAddingTaskDocument(true)}
+                    >
+                      <Plus size={13} /> Attach Document
+                    </button>
+                  )}
+                </div>
+
+                {taskDocumentError && (
+                  <div className="auth-error-banner" style={{ margin: '8px 0', fontSize: '0.8rem' }}>
+                    <AlertCircle size={14} /> {taskDocumentError}
+                  </div>
+                )}
+
+                {isLoadingTaskDocuments ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                    <Loader2 size={16} className="spinning" /> Loading connected documents...
+                  </div>
+                ) : taskDocuments.length === 0 ? (
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '6px 0' }}>
+                    No documents attached yet. Connect PDF, DOCX, or Notes to ground AI queries and access study materials directly with this task.
+                  </p>
+                ) : (
+                  <div className="task-doc-list">
+                    {taskDocuments.map(doc => (
+                      <div key={doc.id} className="task-doc-card">
+                        <div className="task-doc-info">
+                          <div className="task-doc-icon">
+                            <FileText size={18} color="var(--accent-purple)" />
+                          </div>
+                          <div className="task-doc-details">
+                            <div className="task-doc-title-row">
+                              <span className="task-doc-name" title={doc.fileName}>{doc.fileName}</span>
+                              <span className="task-doc-badge">
+                                {doc.status === 'READY' || doc.status === 'PROCESSED' ? '⚡ RAG Ready' : doc.status}
+                              </span>
+                            </div>
+                            <div className="task-doc-meta">
+                              <span>{formatFileSize(doc.fileSize)}</span>
+                              <span>•</span>
+                              <span>{doc.fileType}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="task-doc-actions">
+                          <button
+                            type="button"
+                            className="btn btn-soft btn-xs"
+                            title="Preview Extracted Content"
+                            onClick={() => handleToggleDocPreview(doc.id)}
+                          >
+                            <Eye size={13} /> {previewDocId === doc.id ? 'Hide' : 'Preview'}
+                          </button>
+                          <a
+                            href={getDocumentDownloadUrl(doc.id)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-soft btn-xs"
+                            title="Download or View Original"
+                          >
+                            <Download size={13} />
+                          </a>
+                          <button
+                            type="button"
+                            className="btn btn-soft btn-xs text-danger"
+                            title="Unlink Document from Task"
+                            onClick={() => handleDetachTaskDocument(doc.id)}
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Inline Document Preview Box */}
+                {previewDocId && (
+                  <div className="task-doc-preview-box fade-in">
+                    <div className="task-doc-preview-header">
+                      <span style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--accent-purple)' }}>
+                        Document Preview
+                      </span>
+                      <button
+                        type="button"
+                        className="close-btn"
+                        style={{ padding: 2 }}
+                        onClick={() => { setPreviewDocId(null); setPreviewDocContent(null); }}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                    {isLoadingDocPreview ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 0', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
+                        <Loader2 size={14} className="spinning" /> Loading document text...
+                      </div>
+                    ) : previewDocContent ? (
+                      <div className="task-doc-preview-content">
+                        {previewDocContent.extractedText ? (
+                          <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit', fontSize: '0.82rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                            {previewDocContent.extractedText.slice(0, 3000)}
+                            {previewDocContent.extractedText.length > 3000 && '... [Preview truncated for display]'}
+                          </pre>
+                        ) : (
+                          <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                            No extracted text available for this document.
+                          </p>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+
+                {/* Attach Document Form */}
+                {isAddingTaskDocument && (
+                  <div className="add-dependency-box fade-in" style={{ marginTop: 10 }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: 6 }}>
+                      Select Document from Knowledge Base:
+                    </label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <select
+                        className="form-input"
+                        style={{ fontSize: '0.85rem', padding: '6px 10px' }}
+                        value={selectedDocToAttachId}
+                        onChange={e => setSelectedDocToAttachId(e.target.value)}
+                      >
+                        <option value="">-- Choose document to connect --</option>
+                        {allUserDocuments
+                          .filter(d => !taskDocuments.some(td => String(td.id) === String(d.id)))
+                          .map(d => (
+                            <option key={d.id} value={d.id}>
+                              {d.fileName} ({formatFileSize(d.fileSize)})
+                            </option>
+                          ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        disabled={!selectedDocToAttachId}
+                        onClick={handleAttachTaskDocument}
+                      >
+                        Attach
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-soft btn-sm"
+                        onClick={() => { setIsAddingTaskDocument(false); setSelectedDocToAttachId(''); setTaskDocumentError(null); }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Grounded AI Task Assistant (RAG) Section */}
+              <div className="task-ai-section">
+                <div className="task-ai-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Sparkles size={16} color="var(--accent-purple)" />
+                    <h4>Grounded AI Assistant (Task RAG)</h4>
+                  </div>
+                  <span className="task-doc-badge" style={{ background: '#ede9fe', color: 'var(--accent-purple)' }}>
+                    Vector Knowledge Base
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '4px 0 10px 0' }}>
+                  Ask questions grounded in your attached documents and knowledge base to solve or prepare for this task.
+                </p>
+
+                <div className="task-ai-input-group">
+                  <input
+                    type="text"
+                    className="form-input"
+                    style={{ fontSize: '0.85rem', padding: '8px 12px' }}
+                    placeholder={`Ask anything about "${detailTask.title}"...`}
+                    value={taskAiQuestion}
+                    onChange={e => setTaskAiQuestion(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAskTaskAi();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    disabled={isAskingTaskAi || !taskAiQuestion.trim()}
+                    onClick={() => handleAskTaskAi()}
+                  >
+                    {isAskingTaskAi ? (
+                      <>
+                        <Loader2 size={14} className="spinning" /> Asking...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={14} /> Ask AI
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {taskAiError && (
+                  <div className="auth-error-banner" style={{ margin: '8px 0', fontSize: '0.8rem' }}>
+                    <AlertCircle size={14} /> {taskAiError}
+                  </div>
+                )}
+
+                {taskAiAnswer && (
+                  <div className="task-ai-answer-card fade-in">
+                    <div className="task-ai-answer-header">
+                      <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-primary)' }}>
+                        AI Response
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                        Model: {taskAiAnswer.modelName || 'Mistral-7B'}
+                      </span>
+                    </div>
+                    <div className="task-ai-answer-body">
+                      {taskAiAnswer.answer}
+                    </div>
+
+                    {taskAiAnswer.sources && taskAiAnswer.sources.length > 0 && (
+                      <div className="task-ai-sources">
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                          Sources Cited:
+                        </span>
+                        <div className="task-ai-source-badges">
+                          {taskAiAnswer.sources.map((src, i) => (
+                            <div key={i} className="task-ai-source-badge" title={`Chunk #${src.chunkIndex}`}>
+                              <FileText size={11} />
+                              <span>{src.documentName}</span>
+                              <span style={{ opacity: 0.7 }}>({Math.round((src.similarity || 0) * 100)}% match)</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="modal-footer">
@@ -2572,6 +3136,8 @@ export default function DashboardPage() {
         isOpen={isAiModalOpen} 
         onClose={() => setIsAiModalOpen(false)} 
         onTasksGenerated={handleTasksGenerated} 
+        initialDate={aiModalInitialDate}
+        initialPrompt={aiModalInitialPrompt}
       />
 
     </div>
