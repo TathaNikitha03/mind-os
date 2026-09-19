@@ -9,18 +9,10 @@ public class QueryDb {
             Connection conn = DriverManager.getConnection("jdbc:postgresql://localhost:5432/mindflow_db", "postgres", "Nikitha@03");
             Statement stmt = conn.createStatement();
             
-            ResultSet rs = stmt.executeQuery("SELECT count(*) FROM documents WHERE user_id = 11");
-            rs.next();
-            System.out.println("Documents for user 11: " + rs.getInt(1));
-            
-            rs = stmt.executeQuery("SELECT count(*) FROM document_chunks dc JOIN documents d ON d.id = dc.document_id WHERE d.user_id = 11");
-            rs.next();
-            System.out.println("Chunks for user 11: " + rs.getInt(1));
-
-            rs = stmt.executeQuery("SELECT count(*) FROM document_chunk_embeddings dce JOIN document_chunks dc ON dc.id = dce.chunk_id JOIN documents d ON d.id = dc.document_id WHERE d.user_id = 11");
-            rs.next();
-            System.out.println("Embeddings for user 11: " + rs.getInt(1));
-            
+            ResultSet rs = stmt.executeQuery("SELECT id, name, email, created_at FROM users ORDER BY id DESC LIMIT 20");
+            while (rs.next()) {
+                System.out.println("User ID: " + rs.getInt("id") + " | Name: " + rs.getString("name") + " | Email/Mobile: " + rs.getString("email") + " | Created: " + rs.getTimestamp("created_at"));
+            }
             conn.close();
         } catch (Exception e) {
             e.printStackTrace();

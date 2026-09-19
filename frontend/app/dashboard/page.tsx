@@ -7,7 +7,8 @@ import {
   LayoutDashboard, CheckSquare, FileText, Calendar, Bot, User,
   LogOut, Plus, Search, Filter, CheckCircle2, Circle, Edit3, Trash2,
   Clock, Tag as TagIcon, Folder, X, AlertCircle, Eye, ListTodo,
-  CheckCheck, AlertTriangle, Sparkles, RefreshCw, Loader2, Link as LinkIcon
+  CheckCheck, AlertTriangle, Sparkles, RefreshCw, Loader2, Link as LinkIcon,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { getCurrentUser, logout, getMemberSince, type User as AuthUser } from '@/lib/auth';
 import {
@@ -18,6 +19,7 @@ import {
   getCategoriesApi, createCategoryApi, updateCategoryApi, deleteCategoryApi,
   type CategoryDto, type CategoryInput
 } from '@/lib/categoryApi';
+import AiTaskAssistantModal from '../components/AiTaskAssistantModal';
 
 function formatTimeAMPM(time24?: string) {
   if (!time24) return '';
@@ -28,6 +30,53 @@ function formatTimeAMPM(time24?: string) {
   const h12 = hNum % 12 || 12;
   return `${h12}:${m} ${ampm}`;
 }
+
+function formatDuration(minutes?: number): string {
+  if (!minutes || minutes <= 0) return '';
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
+}
+
+const HOURLY_TIME_OPTIONS = [
+  // Morning (AM)
+  { value: '00:00', label: '12:00 AM (Midnight)', period: 'AM' },
+  { value: '01:00', label: '1:00 AM', period: 'AM' },
+  { value: '02:00', label: '2:00 AM', period: 'AM' },
+  { value: '03:00', label: '3:00 AM', period: 'AM' },
+  { value: '04:00', label: '4:00 AM', period: 'AM' },
+  { value: '05:00', label: '5:00 AM', period: 'AM' },
+  { value: '06:00', label: '6:00 AM', period: 'AM' },
+  { value: '07:00', label: '7:00 AM', period: 'AM' },
+  { value: '08:00', label: '8:00 AM', period: 'AM' },
+  { value: '09:00', label: '9:00 AM', period: 'AM' },
+  { value: '10:00', label: '10:00 AM', period: 'AM' },
+  { value: '11:00', label: '11:00 AM', period: 'AM' },
+  // Afternoon / Evening (PM)
+  { value: '12:00', label: '12:00 PM (Noon)', period: 'PM' },
+  { value: '13:00', label: '1:00 PM', period: 'PM' },
+  { value: '14:00', label: '2:00 PM', period: 'PM' },
+  { value: '15:00', label: '3:00 PM', period: 'PM' },
+  { value: '16:00', label: '4:00 PM', period: 'PM' },
+  { value: '17:00', label: '5:00 PM', period: 'PM' },
+  { value: '18:00', label: '6:00 PM', period: 'PM' },
+  { value: '19:00', label: '7:00 PM', period: 'PM' },
+  { value: '20:00', label: '8:00 PM', period: 'PM' },
+  { value: '21:00', label: '9:00 PM', period: 'PM' },
+  { value: '22:00', label: '10:00 PM', period: 'PM' },
+  { value: '23:00', label: '11:00 PM', period: 'PM' },
+];
+
+const DEFAULT_CATEGORIES = [
+  'Academics & Studies',
+  'Work & Projects',
+  'Research & AI',
+  'Personal & Life',
+  'Health & Fitness',
+  'General',
+];
 import {
   getTagsApi, type TagDto
 } from '@/lib/tagApi';
@@ -146,6 +195,9 @@ export default function DashboardPage() {
   const [isLoadingTags, setIsLoadingTags] = useState(true);
   const [tagApiError, setTagApiError] = useState<string | null>(null);
 
+  // AI Task Assistant State
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+
   // Category Modal State
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CategoryDto | null>(null);
@@ -186,12 +238,127 @@ export default function DashboardPage() {
   const [formStatus, setFormStatus] = useState<Status>('TODO');
   const [formDueDate, setFormDueDate] = useState('');
   const [formDueTime, setFormDueTime] = useState('');
-  const [formEstimatedMinutes, setFormEstimatedMinutes] = useState('');
   const [formCategory, setFormCategory] = useState('');
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  const [customCategoryInput, setCustomCategoryInput] = useState('');
   const [formTagsList, setFormTagsList] = useState<string[]>([]);
   const [tagInputValue, setTagInputValue] = useState('');
   const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const [formErrors, setFormErrors] = useState<{ title?: string; priority?: string }>({});
+
+  // Interactive Schedule Calendar State
+  const [calendarCurrentDate, setCalendarCurrentDate] = useState(() => new Date());
+  const [calendarSelectedDate, setCalendarSelectedDate] = useState(() => getTodayString());
+
+  function handlePrevMonth() {
+    setCalendarCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  }
+
+  function handleNextMonth() {
+    setCalendarCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  }
+
+  function handleJumpToToday() {
+    const today = new Date();
+    setCalendarCurrentDate(today);
+    setCalendarSelectedDate(getTodayString());
+  }
+
+  const calendarDays = useMemo(() => {
+    const year = calendarCurrentDate.getFullYear();
+    const month = calendarCurrentDate.getMonth();
+
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+    const days: {
+      dateString: string;
+      dayNumber: number;
+      isCurrentMonth: boolean;
+      isToday: boolean;
+    }[] = [];
+
+    const todayStr = getTodayString();
+
+    // 1. Previous month trailing days
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      const d = daysInPrevMonth - i;
+      const prevDate = new Date(year, month - 1, d);
+      const yStr = prevDate.getFullYear();
+      const mStr = String(prevDate.getMonth() + 1).padStart(2, '0');
+      const dStr = String(d).padStart(2, '0');
+      const dateString = `${yStr}-${mStr}-${dStr}`;
+      days.push({
+        dateString,
+        dayNumber: d,
+        isCurrentMonth: false,
+        isToday: dateString === todayStr,
+      });
+    }
+
+    // 2. Current month days
+    for (let d = 1; d <= daysInMonth; d++) {
+      const mStr = String(month + 1).padStart(2, '0');
+      const dStr = String(d).padStart(2, '0');
+      const dateString = `${year}-${mStr}-${dStr}`;
+      days.push({
+        dateString,
+        dayNumber: d,
+        isCurrentMonth: true,
+        isToday: dateString === todayStr,
+      });
+    }
+
+    // 3. Next month leading days (completing 35 or 42 grid cells)
+    const totalCells = days.length <= 35 ? 35 : 42;
+    const remainingDays = totalCells - days.length;
+    for (let d = 1; d <= remainingDays; d++) {
+      const nextDate = new Date(year, month + 1, d);
+      const yStr = nextDate.getFullYear();
+      const mStr = String(nextDate.getMonth() + 1).padStart(2, '0');
+      const dStr = String(d).padStart(2, '0');
+      const dateString = `${yStr}-${mStr}-${dStr}`;
+      days.push({
+        dateString,
+        dayNumber: d,
+        isCurrentMonth: false,
+        isToday: dateString === todayStr,
+      });
+    }
+
+    return days;
+  }, [calendarCurrentDate]);
+
+  const tasksByDate = useMemo(() => {
+    const map: Record<string, TaskItem[]> = {};
+    tasks.forEach(t => {
+      const dateKey = t.dueDate ? t.dueDate.split('T')[0] : '';
+      if (dateKey) {
+        if (!map[dateKey]) map[dateKey] = [];
+        map[dateKey].push(t);
+      }
+    });
+    Object.keys(map).forEach(key => {
+      map[key].sort((a, b) => (a.dueTime || '99:99').localeCompare(b.dueTime || '99:99'));
+    });
+    return map;
+  }, [tasks]);
+
+  const selectedDateTasks = useMemo(() => {
+    return tasksByDate[calendarSelectedDate] || [];
+  }, [tasksByDate, calendarSelectedDate]);
+
+  const formattedMonthYear = useMemo(() => {
+    return calendarCurrentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }, [calendarCurrentDate]);
+
+  const formattedSelectedDate = useMemo(() => {
+    const [y, m, d] = calendarSelectedDate.split('-').map(Number);
+    if (!y || !m || !d) return calendarSelectedDate;
+    const dateObj = new Date(y, m - 1, d);
+    return dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+  }, [calendarSelectedDate]);
 
   useEffect(() => {
     const u = getCurrentUser();
@@ -213,8 +380,8 @@ export default function DashboardPage() {
       const dto = await getTaskStatisticsApi();
       setTaskStats(dto);
     } catch (err: any) {
-      console.error('Failed to load task statistics:', err);
-      setStatsApiError('Unable to load task statistics.');
+      console.warn('Failed to load task statistics:', err?.message || err);
+      setStatsApiError(err?.message || 'Unable to load task statistics.');
     } finally {
       setIsLoadingStats(false);
     }
@@ -227,8 +394,8 @@ export default function DashboardPage() {
       const dtos = await getTagsApi();
       setTags(dtos);
     } catch (err: any) {
-      console.error('Failed to load tags:', err);
-      setTagApiError('Unable to load tags.');
+      console.warn('Failed to load tags:', err?.message || err);
+      setTagApiError(err?.message || 'Unable to load tags.');
     } finally {
       setIsLoadingTags(false);
     }
@@ -241,8 +408,8 @@ export default function DashboardPage() {
       const dtos = await getCategoriesApi();
       setCategories(dtos);
     } catch (err: any) {
-      console.error('Failed to load categories:', err);
-      setCategoryApiError('Unable to load categories.');
+      console.warn('Failed to load categories:', err?.message || err);
+      setCategoryApiError(err?.message || 'Unable to load categories.');
     } finally {
       setIsLoadingCategories(false);
     }
@@ -271,8 +438,8 @@ export default function DashboardPage() {
       }));
       setTasks(mappedTasks);
     } catch (err: any) {
-      console.error('Failed to load tasks:', err);
-      setTaskApiError('Unable to load tasks. Please try again.');
+      console.warn('Failed to load tasks:', err?.message || err);
+      setTaskApiError(err?.message || 'Unable to load tasks. Please ensure the backend is running.');
     } finally {
       setIsLoadingTasks(false);
     }
@@ -340,6 +507,31 @@ export default function DashboardPage() {
   }
 
   // Category Operations
+  async function seedStarterCategories() {
+    setIsSubmittingCategory(true);
+    setCategoryActionError(null);
+    try {
+      const starters = [
+        { name: 'Academics & Studies', description: 'Lectures, coursework, exam preparation, and study notes.' },
+        { name: 'Work & Projects', description: 'Coding tasks, team projects, meetings, and sprint deliverables.' },
+        { name: 'Research & AI', description: 'Paper reading, model experiments, and AI knowledge engineering.' },
+        { name: 'Personal & Life', description: 'Personal habits, daily routines, errands, and health.' },
+        { name: 'Health & Fitness', description: 'Workouts, nutrition, sleep tracking, and wellness goals.' },
+      ];
+      for (const s of starters) {
+        if (!categories.some(c => c.name.toLowerCase() === s.name.toLowerCase())) {
+          await createCategoryApi(s);
+        }
+      }
+      await loadCategoriesFromBackend();
+    } catch (err: any) {
+      console.error('Failed to seed starter categories:', err);
+      setCategoryActionError('Failed to load starter categories: ' + (err.message || 'Error'));
+    } finally {
+      setIsSubmittingCategory(false);
+    }
+  }
+
   function openCreateCategoryModal() {
     setEditingCategory(null);
     setCategoryFormName('');
@@ -423,7 +615,12 @@ export default function DashboardPage() {
 
   // Calculate Available Dynamic Categories for dropdowns & filters
   const categoriesList = useMemo(() => {
-    const list = categories.map(c => c.name);
+    const list = [...DEFAULT_CATEGORIES];
+    categories.forEach(c => {
+      if (c.name && !list.includes(c.name)) {
+        list.push(c.name);
+      }
+    });
     tasks.forEach(t => {
       if (t.category && !list.includes(t.category)) {
         list.push(t.category);
@@ -492,6 +689,29 @@ export default function DashboardPage() {
 
     return { total, today, inProgress, completed, overdue };
   }, [tasks]);
+
+  // --- COMPUTE STATS & GETTERS --- //
+  const activeTasks = tasks.filter(t => t.status !== 'COMPLETED');
+  const doneTasks = tasks.filter(t => t.status === 'COMPLETED');
+
+  // --- AI HANDLERS --- //
+  const handleTasksGenerated = async (suggestedTasks: TaskInput[]) => {
+    setIsAiModalOpen(false);
+    setActionError(null);
+    try {
+      for (const t of suggestedTasks) {
+        await createTaskApi({
+          ...t,
+          dueDate: getTodayString(),
+          category: 'General',
+          tags: []
+        });
+      }
+      await loadTasksFromBackend();
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to add generated tasks.');
+    }
+  };
 
   // Filtered Tasks List
   const filteredTasks = useMemo(() => {
@@ -569,8 +789,9 @@ export default function DashboardPage() {
     setFormStatus('TODO');
     setFormDueDate(getTodayString());
     setFormDueTime('18:00');
-    setFormEstimatedMinutes('30');
-    setFormCategory(categories.length > 0 ? categories[0].name : '');
+    setIsCustomCategory(false);
+    setCustomCategoryInput('');
+    setFormCategory('Academics & Studies');
     setFormTagsList([]);
     setTagInputValue('');
     setShowTagSuggestions(false);
@@ -588,8 +809,9 @@ export default function DashboardPage() {
     setFormStatus(task.status);
     setFormDueDate(task.dueDate);
     setFormDueTime(task.dueTime || '');
-    setFormEstimatedMinutes(task.estimatedMinutes ? String(task.estimatedMinutes) : '');
-    setFormCategory(task.category);
+    setIsCustomCategory(false);
+    setCustomCategoryInput('');
+    setFormCategory(task.category || 'General');
     setFormTagsList(task.tags ? [...task.tags] : []);
     setTagInputValue('');
     setShowTagSuggestions(false);
@@ -629,7 +851,6 @@ export default function DashboardPage() {
       status: formStatus,
       dueDate: formDueDate || getTodayString(),
       dueTime: formDueTime || '18:00',
-      estimatedMinutes: formEstimatedMinutes ? parseInt(formEstimatedMinutes, 10) : undefined,
       category: formCategory || 'General',
       tags: finalTags,
     };
@@ -1115,9 +1336,13 @@ export default function DashboardPage() {
                   <h1>Task Management</h1>
                   <p>Manage, prioritize, and track all your tasks stored in PostgreSQL.</p>
                 </div>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button className="btn btn-soft" onClick={() => { loadTasksFromBackend(); loadTaskStatisticsFromBackend(); }} title="Refresh tasks">
+                <div className="tasks-header-actions" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <button className="btn btn-soft" onClick={loadTasksFromBackend} title="Refresh tasks">
                     <RefreshCw size={16} />
+                    Refresh Stats
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => setIsAiModalOpen(true)} style={{ background: 'var(--brand-primary)', color: 'white', borderColor: 'var(--brand-primary)' }}>
+                    <Sparkles size={18} /> Ask AI
                   </button>
                   <button className="btn btn-primary" onClick={openCreateModal}>
                     <Plus size={18} />
@@ -1363,11 +1588,6 @@ export default function DashboardPage() {
                               {task.dueDate} {task.dueTime ? `at ${formatTimeAMPM(task.dueTime)}` : ''}
                               {isOverdue && ' (Overdue)'}
                             </span>
-                            {task.estimatedMinutes && (
-                              <span className="meta-item">
-                                <Clock size={13} /> {task.estimatedMinutes}m
-                              </span>
-                            )}
                           </div>
                         </div>
                       );
@@ -1389,6 +1609,9 @@ export default function DashboardPage() {
                   <p>Organize, group, and structure your tasks with custom categories.</p>
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
+                  <button className="btn btn-soft" onClick={seedStarterCategories} disabled={isSubmittingCategory} title="Load starter categories">
+                    <Sparkles size={16} /> Starter Categories
+                  </button>
                   <button className="btn btn-soft" onClick={loadCategoriesFromBackend} title="Refresh categories">
                     <RefreshCw size={16} />
                   </button>
@@ -1433,9 +1656,14 @@ export default function DashboardPage() {
                     <div className="empty-icon-wrap"><Folder size={32} /></div>
                     <h3>No categories yet.</h3>
                     <p>Create categories like Study, Project, Placement, or Personal to organize your tasks.</p>
-                    <button className="btn btn-primary" onClick={openCreateCategoryModal}>
-                      <Plus size={16} /> Create Category
-                    </button>
+                    <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 12 }}>
+                      <button className="btn btn-primary" onClick={openCreateCategoryModal}>
+                        <Plus size={16} /> Create Category
+                      </button>
+                      <button className="btn btn-soft" onClick={seedStarterCategories} disabled={isSubmittingCategory}>
+                        <Sparkles size={16} /> Load Starter Categories
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="categories-grid">
@@ -1492,10 +1720,228 @@ export default function DashboardPage() {
 
 
           {panel === 'calendar' && (
-            <div className="fade-in panel-placeholder">
-              <div className="placeholder-icon"><Calendar size={32} /></div>
-              <h2>Schedule Calendar</h2>
-              <p>View deadlines and events in a unified calendar layout. Coming soon.</p>
+            <div className="fade-in">
+              <div className="calendar-layout">
+                {/* Main Calendar Card */}
+                <div className="calendar-main-card">
+                  {/* Calendar Top Controls Header */}
+                  <div className="calendar-header">
+                    <div className="calendar-title-group">
+                      <div className="calendar-nav-btns">
+                        <button
+                          type="button"
+                          className="calendar-nav-btn"
+                          onClick={handlePrevMonth}
+                          title="Previous Month"
+                        >
+                          <ChevronLeft size={18} />
+                        </button>
+                        <button
+                          type="button"
+                          className="calendar-nav-btn"
+                          onClick={handleNextMonth}
+                          title="Next Month"
+                        >
+                          <ChevronRight size={18} />
+                        </button>
+                      </div>
+                      <h2 className="calendar-month-title">{formattedMonthYear}</h2>
+                      <button
+                        type="button"
+                        className="calendar-today-btn"
+                        onClick={handleJumpToToday}
+                      >
+                        Today
+                      </button>
+                    </div>
+
+                    <div className="calendar-actions">
+                      <button
+                        className="btn btn-primary btn-sm"
+                        style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                        onClick={() => {
+                          openCreateModal();
+                          setFormDueDate(calendarSelectedDate);
+                        }}
+                      >
+                        <Plus size={16} /> Add Task
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Day of Week Headers */}
+                  <div className="calendar-weekdays-grid">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                      <div key={day} className="calendar-weekday-header">
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Calendar Days Grid */}
+                  <div className="calendar-days-grid">
+                    {calendarDays.map(item => {
+                      const dayTasks = tasksByDate[item.dateString] || [];
+                      const isSelected = item.dateString === calendarSelectedDate;
+                      const displayTasks = dayTasks.slice(0, 3);
+                      const extraCount = dayTasks.length - 3;
+
+                      return (
+                        <div
+                          key={item.dateString}
+                          className={`calendar-day-cell ${
+                            !item.isCurrentMonth ? 'calendar-day-cell-other-month' : ''
+                          } ${item.isToday ? 'calendar-day-cell-today' : ''} ${
+                            isSelected ? 'calendar-day-cell-selected' : ''
+                          }`}
+                          onClick={() => setCalendarSelectedDate(item.dateString)}
+                        >
+                          <div className="calendar-day-top">
+                            <span
+                              className={`calendar-day-number ${
+                                item.isToday ? 'calendar-day-number-today' : ''
+                              }`}
+                            >
+                              {item.dayNumber}
+                            </span>
+                            {dayTasks.length > 0 && (
+                              <span className="calendar-day-count-badge">
+                                {dayTasks.length}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="calendar-tasks-list">
+                            {displayTasks.map(task => {
+                              const isCompleted = task.status === 'COMPLETED';
+                              const priorityClass =
+                                task.priority === 'HIGH'
+                                  ? 'calendar-task-pill-high'
+                                  : task.priority === 'LOW'
+                                  ? 'calendar-task-pill-low'
+                                  : 'calendar-task-pill-medium';
+
+                              return (
+                                <div
+                                  key={task.id}
+                                  className={`calendar-task-pill ${
+                                    isCompleted ? 'calendar-task-pill-completed' : priorityClass
+                                  }`}
+                                  title={`${task.title}${task.dueTime ? ` (${formatTimeAMPM(task.dueTime)})` : ''}`}
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    openTaskDetails(task);
+                                  }}
+                                >
+                                  {isCompleted ? <CheckCheck size={11} /> : <Circle size={10} />}
+                                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {task.dueTime ? `${formatTimeAMPM(task.dueTime).split(' ')[0]} ` : ''}
+                                    {task.title}
+                                  </span>
+                                </div>
+                              );
+                            })}
+
+                            {extraCount > 0 && (
+                              <div className="calendar-more-pill">
+                                +{extraCount} more
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Day Agenda Side Panel */}
+                <div className="calendar-agenda-card">
+                  <div className="calendar-agenda-header">
+                    <div className="calendar-agenda-date">{formattedSelectedDate}</div>
+                    <div className="calendar-agenda-subtitle">
+                      {selectedDateTasks.length === 0
+                        ? 'No tasks scheduled'
+                        : `${selectedDateTasks.length} task${selectedDateTasks.length === 1 ? '' : 's'} scheduled`}
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: 14 }}>
+                    <button
+                      className="btn btn-soft btn-full"
+                      style={{ padding: '10px', fontSize: '0.84rem' }}
+                      onClick={() => {
+                        openCreateModal();
+                        setFormDueDate(calendarSelectedDate);
+                      }}
+                    >
+                      <Plus size={14} /> Add task for this day
+                    </button>
+                  </div>
+
+                  <div className="calendar-agenda-list">
+                    {selectedDateTasks.length === 0 ? (
+                      <div
+                        style={{
+                          textAlign: 'center',
+                          padding: '32px 16px',
+                          color: 'var(--text-muted)',
+                        }}
+                      >
+                        <Calendar size={28} style={{ opacity: 0.4, marginBottom: 8 }} />
+                        <p style={{ fontSize: '0.86rem', margin: 0 }}>
+                          Nothing scheduled for this day.
+                        </p>
+                      </div>
+                    ) : (
+                      selectedDateTasks.map(task => {
+                        const isCompleted = task.status === 'COMPLETED';
+                        return (
+                          <div
+                            key={task.id}
+                            className={`calendar-agenda-item ${
+                              isCompleted ? 'calendar-agenda-item-completed' : ''
+                            }`}
+                            onClick={() => openTaskDetails(task)}
+                          >
+                            <button
+                              type="button"
+                              className={`task-check ${isCompleted ? 'task-check-done' : ''}`}
+                              style={{ marginTop: 2, flexShrink: 0 }}
+                              onClick={e => {
+                                e.stopPropagation();
+                                toggleCompleteTask(task);
+                              }}
+                              title={isCompleted ? 'Mark as todo' : 'Mark as completed'}
+                            >
+                              {isCompleted && <CheckCircle2 size={16} />}
+                            </button>
+
+                            <div className="calendar-agenda-item-content">
+                              <div className="calendar-agenda-item-title">{task.title}</div>
+                              <div className="calendar-agenda-item-meta">
+                                {task.dueTime && (
+                                  <span>
+                                    <Clock size={11} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 2 }} />
+                                    {formatTimeAMPM(task.dueTime)}
+                                  </span>
+                                )}
+                                <span className={`priority-badge priority-${task.priority.toLowerCase()}`} style={{ fontSize: '0.68rem', padding: '1px 6px' }}>
+                                  {task.priority}
+                                </span>
+                                {task.category && (
+                                  <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
+                                    {task.category}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1616,46 +2062,101 @@ export default function DashboardPage() {
 
                   <div className="form-group">
                     <label>Due Time</label>
-                    <input
-                      type="time"
+                    <select
                       className="form-input"
-                      value={formDueTime}
+                      value={formDueTime || '18:00'}
                       onChange={e => setFormDueTime(e.target.value)}
                       disabled={isSubmitting}
-                    />
+                    >
+                      <optgroup label="Morning (AM)">
+                        {HOURLY_TIME_OPTIONS.filter(t => t.period === 'AM').map(opt => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                      <optgroup label="Afternoon / Evening (PM)">
+                        {HOURLY_TIME_OPTIONS.filter(t => t.period === 'PM').map(opt => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                      {formDueTime && !HOURLY_TIME_OPTIONS.some(t => t.value === formDueTime) && (
+                        <option value={formDueTime}>
+                          {formatTimeAMPM(formDueTime)}
+                        </option>
+                      )}
+                    </select>
                   </div>
                 </div>
 
-                {/* Category & Estimated Minutes Row */}
-                <div className="form-grid-2">
-                  <div className="form-group">
-                    <label>Category</label>
+                {/* Category Field */}
+                <div className="form-group">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <label style={{ margin: 0 }}>Category</label>
+                    {!isCustomCategory ? (
+                      <button
+                        type="button"
+                        className="btn-link"
+                        style={{ fontSize: '0.78rem', color: 'var(--brand-primary)', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
+                        onClick={() => {
+                          setIsCustomCategory(true);
+                          setCustomCategoryInput('');
+                          setFormCategory('');
+                        }}
+                      >
+                        + Custom Category
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn-link"
+                        style={{ fontSize: '0.78rem', color: 'var(--brand-primary)', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
+                        onClick={() => {
+                          setIsCustomCategory(false);
+                          setFormCategory(categoriesList[0] || 'General');
+                        }}
+                      >
+                        Select Existing
+                      </button>
+                    )}
+                  </div>
+                  {!isCustomCategory ? (
                     <select
                       className="form-input"
                       value={formCategory}
-                      onChange={e => setFormCategory(e.target.value)}
+                      onChange={e => {
+                        if (e.target.value === '__NEW__') {
+                          setIsCustomCategory(true);
+                          setCustomCategoryInput('');
+                          setFormCategory('');
+                        } else {
+                          setFormCategory(e.target.value);
+                        }
+                      }}
                       disabled={isSubmitting}
                     >
                       <option value="">Select category</option>
                       {categoriesList.map(cat => (
                         <option key={cat} value={cat}>{cat}</option>
                       ))}
+                      <option value="__NEW__">➕ + Add New Custom Category...</option>
                     </select>
-                  </div>
-
-
-                  <div className="form-group">
-                    <label>Estimated Time (mins)</label>
+                  ) : (
                     <input
-                      type="number"
-                      min="1"
+                      type="text"
                       className="form-input"
-                      placeholder="e.g. 45"
-                      value={formEstimatedMinutes}
-                      onChange={e => setFormEstimatedMinutes(e.target.value)}
+                      placeholder="Type custom category name..."
+                      value={customCategoryInput}
+                      onChange={e => {
+                        setCustomCategoryInput(e.target.value);
+                        setFormCategory(e.target.value);
+                      }}
+                      autoFocus
                       disabled={isSubmitting}
                     />
-                  </div>
+                  )}
                 </div>
 
                 {/* Tags Field (Chip input with autocomplete) */}
@@ -1768,15 +2269,10 @@ export default function DashboardPage() {
                 <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: 20 }}>No description provided.</p>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, background: 'var(--pastel-bg)', padding: 16, borderRadius: 'var(--radius-md)', marginBottom: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 16, background: 'var(--pastel-bg)', padding: 16, borderRadius: 'var(--radius-md)', marginBottom: 20 }}>
                 <div>
                   <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>DUE DATE</span>
                   <span style={{ fontSize: '0.92rem', fontWeight: 600 }}>{detailTask.dueDate} {detailTask.dueTime ? `at ${formatTimeAMPM(detailTask.dueTime)}` : ''}</span>
-                </div>
-
-                <div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>ESTIMATED TIME</span>
-                  <span style={{ fontSize: '0.92rem', fontWeight: 600 }}>{detailTask.estimatedMinutes ? `${detailTask.estimatedMinutes} minutes` : 'Not specified'}</span>
                 </div>
 
                 <div>
@@ -2071,6 +2567,13 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+      {/* AI TASK ASSISTANT MODAL */}
+      <AiTaskAssistantModal 
+        isOpen={isAiModalOpen} 
+        onClose={() => setIsAiModalOpen(false)} 
+        onTasksGenerated={handleTasksGenerated} 
+      />
+
     </div>
   );
 }

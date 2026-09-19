@@ -74,9 +74,20 @@ function getAuthHeaders(): Record<string, string> {
   return headers;
 }
 
+async function safeFetch(url: string, options?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, options);
+  } catch (err: any) {
+    if (err.name === 'TypeError' || err.message?.includes('fetch')) {
+      throw new Error(`Unable to connect to backend server at ${API_BASE_URL}. Please ensure the Spring Boot server is running on port 8081.`);
+    }
+    throw err;
+  }
+}
+
 // 0. GET /api/tasks/statistics - Get task statistics & dashboard intelligence
 export async function getTaskStatisticsApi(): Promise<TaskStatisticsDto> {
-  const res = await fetch(`${API_BASE_URL}/api/tasks/statistics`, {
+  const res = await safeFetch(`${API_BASE_URL}/api/tasks/statistics`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -91,7 +102,7 @@ export async function getTaskStatisticsApi(): Promise<TaskStatisticsDto> {
 
 // 1. GET /api/tasks - List tasks for authenticated user
 export async function getTasksApi(): Promise<TaskDto[]> {
-  const res = await fetch(`${API_BASE_URL}/api/tasks`, {
+  const res = await safeFetch(`${API_BASE_URL}/api/tasks`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -105,7 +116,7 @@ export async function getTasksApi(): Promise<TaskDto[]> {
 
 // 2. GET /api/tasks/{id} - Get single task
 export async function getTaskByIdApi(id: string | number): Promise<TaskDto> {
-  const res = await fetch(`${API_BASE_URL}/api/tasks/${id}`, {
+  const res = await safeFetch(`${API_BASE_URL}/api/tasks/${id}`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });
@@ -124,7 +135,7 @@ export async function createTaskApi(input: TaskInput): Promise<TaskDto> {
     dueDate: input.dueDate ? `${input.dueDate}${input.dueTime ? 'T' + input.dueTime : 'T18:00'}` : undefined,
   };
 
-  const res = await fetch(`${API_BASE_URL}/api/tasks`, {
+  const res = await safeFetch(`${API_BASE_URL}/api/tasks`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
@@ -145,7 +156,7 @@ export async function updateTaskApi(id: string | number, input: TaskInput): Prom
     dueDate: input.dueDate ? `${input.dueDate}${input.dueTime ? 'T' + input.dueTime : 'T18:00'}` : undefined,
   };
 
-  const res = await fetch(`${API_BASE_URL}/api/tasks/${id}`, {
+  const res = await safeFetch(`${API_BASE_URL}/api/tasks/${id}`, {
     method: 'PUT',
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
@@ -161,7 +172,7 @@ export async function updateTaskApi(id: string | number, input: TaskInput): Prom
 
 // 5. PATCH /api/tasks/{id}/complete - Mark complete
 export async function completeTaskApi(id: string | number): Promise<TaskDto> {
-  const res = await fetch(`${API_BASE_URL}/api/tasks/${id}/complete`, {
+  const res = await safeFetch(`${API_BASE_URL}/api/tasks/${id}/complete`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
   });
@@ -176,7 +187,7 @@ export async function completeTaskApi(id: string | number): Promise<TaskDto> {
 
 // 6. DELETE /api/tasks/{id} - Delete task
 export async function deleteTaskApi(id: string | number): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/api/tasks/${id}`, {
+  const res = await safeFetch(`${API_BASE_URL}/api/tasks/${id}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
   });
@@ -187,3 +198,24 @@ export async function deleteTaskApi(id: string | number): Promise<void> {
   }
 }
 // Dummy change 2 for GitHub Desktop test!
+
+// AI TASK ASSISTANT
+export interface AiTaskSuggestionResponse {
+  analysisSummary: string;
+  suggestedTasks: TaskInput[];
+}
+
+export async function analyzeTaskWithAi(prompt: string): Promise<AiTaskSuggestionResponse> {
+  const res = await safeFetch(`${API_BASE_URL}/api/tasks/ai/analyze`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ prompt }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to analyze task with AI: HTTP ${res.status}`);
+  }
+
+  return await res.json();
+}

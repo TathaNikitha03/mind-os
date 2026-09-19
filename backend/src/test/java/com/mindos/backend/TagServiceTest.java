@@ -141,7 +141,7 @@ public class TagServiceTest {
     }
 
     @Test
-    @DisplayName("TEST 4: Edit Task — Remove 'backend' and add 'api'")
+    @DisplayName("TEST 4: Edit Task ??? Remove 'backend' and add 'api'")
     void testEditTaskTags() {
         Category projectCat = Category.builder().id(10L).user(userA).name("Project").build();
         Tag javaTag = Tag.builder().id(1L).user(userA).name("java").build();
@@ -207,7 +207,7 @@ public class TagServiceTest {
     }
 
     @Test
-    @DisplayName("TEST 7: Delete tag — removes tag from tasks but tasks are NOT deleted")
+    @DisplayName("TEST 7: Delete tag ??? removes tag from tasks but tasks are NOT deleted")
     void testDeleteTagPreservesTasks() {
         Tag backendTag = Tag.builder().id(2L).user(userA).name("backend").build();
         when(tagRepository.findById(2L)).thenReturn(Optional.of(backendTag));
@@ -230,7 +230,7 @@ public class TagServiceTest {
     }
 
     @Test
-    @DisplayName("TEST 8: Security & User Isolation — User B cannot modify or delete User A's tag")
+    @DisplayName("TEST 8: Security & User Isolation ??? User B cannot modify or delete User A's tag")
     void testUserIsolation() {
         Tag userATag = Tag.builder().id(1L).user(userA).name("java").build();
         when(tagRepository.findById(1L)).thenReturn(Optional.of(userATag));

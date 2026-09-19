@@ -29,6 +29,7 @@ public class Reminder {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
+    @Builder.Default
     private ReminderStatus status = ReminderStatus.PENDING;
 
     @CreationTimestamp
